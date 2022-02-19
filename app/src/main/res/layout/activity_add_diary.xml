@@ -5,16 +5,16 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".AddDiary">
+
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/add_diary_toolbar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxHeight="40dp"
-        app:navigationIcon="@drawable/ic_arrow_back"
         android:background="@color/cream"
-        app:titleTextColor="@color/brownish"
+        android:maxHeight="40dp"
         app:menu="@menu/add_diary_toolbar_menu"
-        />
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:titleTextColor="@color/brownish" />
     <com.google.android.material.textfield.TextInputEditText
         android:id="@+id/diary_title"
         android:layout_width="match_parent"
@@ -26,36 +26,41 @@
         android:maxLength="50"
         android:textColorHint="@color/brownish"
         android:textColor="@color/dark_greyish"/>
+
     <ImageView
         android:id="@+id/diary_image"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_above="@+id/save_diary_button"
         android:layout_below="@id/diary_note_scrollview"
-        android:layout_margin="10dp"
-        android:src="@color/cream"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="10dp"
         android:scaleType="fitXY"
+        android:src="@color/cream"
         android:visibility="invisible" />
 
     <com.google.android.material.textfield.TextInputEditText
         android:id="@+id/diary_location"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:minHeight="40dp"
-        android:hint="Enter place name"
-        android:layout_alignBottom="@+id/diary_image"
         android:layout_alignStart="@id/diary_image"
-        android:padding="10dp"
-        android:maxLength="50"
-        android:layout_alignEnd="@+id/diary_image"
-        android:backgroundTint="@color/brownish"
-        android:background="@color/grey_50_alpha"
-        android:textColorHint="@color/white"
-        android:textColor="@color/white"
-        android:visibility="invisible"
-        android:layout_alignRight="@+id/diary_image"
         android:layout_alignLeft="@id/diary_image"
-        android:elevation="3dp"/>
+        android:layout_alignEnd="@+id/diary_image"
+        android:layout_alignRight="@+id/diary_image"
+        android:layout_alignBottom="@+id/diary_image"
+        android:background="@color/grey_50_alpha"
+        android:backgroundTint="@color/brownish"
+        android:elevation="3dp"
+        android:hint="Enter place name"
+        android:maxLength="50"
+        android:minHeight="40dp"
+        android:padding="10dp"
+        android:textColor="@color/white"
+        android:textColorHint="@color/white"
+        android:visibility="invisible" />
+
     <ScrollView
         android:id="@+id/diary_note_scrollview"
         android:layout_width="match_parent"
@@ -90,17 +95,18 @@
         android:indeterminateBehavior="cycle"
         android:indeterminate="true"
         android:visibility="invisible"/>
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/save_diary_button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:minHeight="50dp"
         android:layout_alignParentBottom="true"
-        android:text="Save Diary"
-        android:textColor="@color/brownish"
-        android:textAllCaps="false"
         android:backgroundTint="@color/cream"
-        app:cornerRadius="0dp"
-        android:insetBottom="0dp"/>
+        android:insetBottom="0dp"
+        android:minHeight="50dp"
+        android:text="Save Diary"
+        android:textAllCaps="false"
+        android:textColor="@color/brownish"
+        app:cornerRadius="0dp" />
 
 </RelativeLayout>

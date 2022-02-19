@@ -9,13 +9,21 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
+import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.os.SystemClock;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
@@ -47,11 +55,12 @@ import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.support.image.ops.ResizeOp;
 import org.tensorflow.lite.support.label.Category;
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer;
+
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
-
 
 public class AddDiary extends AppCompatActivity {
     //firebase variables
@@ -67,21 +76,29 @@ public class AddDiary extends AppCompatActivity {
     //other variables
     private Uri selectedImage;
     private String[] storagePermissions;
+    private String[] cameraPermissions;
+    private MediaRecorder mediaRecorder;
+    private MediaPlayer mediaPlayer;
+    boolean isRecording;
     //static variables
     private static final int STORAGE_REQUEST_CODE = 200;
+    private static final int CAMERA_REQUEST_CODE = 300;
     private static final int IMAGE_PICK_GALLERY_CODE = 400;
-
+    private static final int CAMERA_CAPTURE_CODE = 500;
+    private static final int MICROPHONE_PERMISSION_CODE = 600;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_diary);
         firebaseAuth=FirebaseAuth.getInstance();
-        firebaseDatabase=FirebaseDatabase.getInstance("https://idiary-1131a-default-rtdb.asia-southeast1.firebasedatabase.app");
+        firebaseDatabase=FirebaseDatabase.getInstance("https://idiaryapp-7d1ea-default-rtdb.asia-southeast1.firebasedatabase.app/");
+        //firebaseDatabase=FirebaseDatabase.getInstance("https://idiary-1131a-default-rtdb.asia-southeast1.firebasedatabase.app");
         databaseReference=firebaseDatabase.getReference(); //referes to idiary-1131a-default-rtdb in our firebase real-time database
         FirebaseUser firebaseUser=firebaseAuth.getCurrentUser();
         //add premission in manifest file as well
         storagePermissions = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE};
+        cameraPermissions = new String[]{Manifest.permission.CAMERA};
         //find views of AddDiary xml file
         progressIndicator=findViewById(R.id.add_diary_progress_bar);
         toolbar=findViewById(R.id.add_diary_toolbar);
@@ -101,10 +118,28 @@ public class AddDiary extends AppCompatActivity {
         diaryLoc=findViewById(R.id.diary_location);
         diaryNote=findViewById(R.id.diary_note);
         saveDiaryButton=findViewById(R.id.save_diary_button);
+        isRecording = false;
         toolbar.getMenu().getItem(0).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
                 displayOptionBuilder();
+                return false;
+            }
+        });
+        toolbar.getMenu().getItem(1).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                if (isMicrophonePresent()) {
+                    getMicrophonePermission();
+                }
+                startRecording();
+                return false;
+            }
+        });
+        toolbar.getMenu().getItem(2).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                playVoice();
                 return false;
             }
         });
@@ -145,10 +180,74 @@ public class AddDiary extends AppCompatActivity {
                 }else{
                     Toast.makeText(getApplicationContext(),"Please enter both title and note.",Toast.LENGTH_SHORT).show();
                 }
-
             }
         });
     }
+
+    private void getMicrophonePermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_DENIED) {
+            ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.RECORD_AUDIO}, MICROPHONE_PERMISSION_CODE);
+        }
+    }
+
+    private boolean isMicrophonePresent() {
+        if (this.getPackageManager().hasSystemFeature(PackageManager.FEATURE_MICROPHONE)) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    private void playVoice() {
+        try {
+            Toast.makeText(this, "Playing the recording.", Toast.LENGTH_LONG).show();
+            mediaPlayer = new MediaPlayer();
+            mediaPlayer.setDataSource(getRecordingFilePath());
+            mediaPlayer.prepare();
+            mediaPlayer.start();
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void startRecording() {
+        if (!isRecording){
+            try {
+                mediaRecorder = new MediaRecorder();
+                mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+                mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+                mediaRecorder.setOutputFile(getRecordingFilePath());
+                mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+                mediaRecorder.prepare();
+                mediaRecorder.start();
+                Toast.makeText(this, "Recording is started.", Toast.LENGTH_LONG).show();
+                isRecording = true;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        else if (isRecording){
+            stopRecording();
+            isRecording = false;
+        }
+    }
+
+    private void stopRecording() {
+        Toast.makeText(this, "Recording is stopped.", Toast.LENGTH_LONG).show();
+        mediaRecorder.stop();
+        mediaRecorder.release();
+        mediaRecorder = null;
+    }
+
+    private String getRecordingFilePath() {
+        ContextWrapper contextWrapper = new ContextWrapper(getApplicationContext());
+        File musicDirectory = contextWrapper.getExternalFilesDir(Environment.DIRECTORY_MUSIC);
+        File file = new File(musicDirectory, "testRecordingFile" + ".mp3");
+        return file.getPath();
+    }
+
     private boolean isTextDiary(String loc){
         // if (title and note are not empty) and no image is selected plus the loc is empty means user wants to save only a textDiary
         return selectedImage==null && loc.isEmpty();
@@ -188,9 +287,7 @@ public class AddDiary extends AppCompatActivity {
                             saveDiaryButton.setClickable(true);
                         }
                     });
-
                 }
-
             }
         }).addOnFailureListener(new OnFailureListener() {
             @Override
@@ -199,8 +296,8 @@ public class AddDiary extends AppCompatActivity {
                 saveDiaryButton.setClickable(true);
             }
         });
-
     }
+
     private void saveImageDiaryToDatabase(String title,String note,String loc,String imageURL,String userId){
         //now the process is the same as we did for textDiary
         HashMap<String,Object> diaryHashmap=new HashMap<>();
@@ -284,7 +381,7 @@ public class AddDiary extends AppCompatActivity {
     }
     private void displayOptionBuilder(){
         //this builder is an alert card it shows options to user to choose from where they want the image from
-        String[] options = {"Gallery"};
+        String[] options = {"Gallery", "Camera"};
         //here we only use gallery option if you would like to add camera option add another element to the options array
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Choose Image from");
@@ -302,11 +399,20 @@ public class AddDiary extends AppCompatActivity {
                         pickFromGallery();
                     }
                 }
+                else if (which == 1) {
+                    if (!checkCameraPermisson()) {
+                        //if is not granted we will request permission
+                        requestCameraPermission();
+                    } else {
+                        //when permission is granted we open the camera
+                        captureFromCamera();
+                    }
+                }
             }
         });
         builder.create().show();
-
     }
+
     private void pickFromGallery() {
         //send intent to open gallery with a request code
         Intent intent = new Intent(Intent.ACTION_PICK);
@@ -314,13 +420,28 @@ public class AddDiary extends AppCompatActivity {
         startActivityForResult(intent, IMAGE_PICK_GALLERY_CODE);
     }
 
+    private void captureFromCamera() {
+        //send intent to camera with a request code
+        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        startActivityForResult(intent, CAMERA_CAPTURE_CODE);
+    }
+
     private boolean checkStoragePermisson() {
         return ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == (PackageManager.PERMISSION_GRANTED);
+    }
+
+    private boolean checkCameraPermisson() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == (PackageManager.PERMISSION_GRANTED);
     }
 
     private void requestStoragePermission() {
         ActivityCompat.requestPermissions(this, storagePermissions, STORAGE_REQUEST_CODE);
     }
+
+    private void requestCameraPermission() {
+        ActivityCompat.requestPermissions(this, cameraPermissions, CAMERA_REQUEST_CODE);
+    }
+
     //when user allows or denies the permission this method will be triggered to either grant or reject access
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -338,20 +459,41 @@ public class AddDiary extends AppCompatActivity {
                 }
             }
         }
+        else if (requestCode == CAMERA_REQUEST_CODE) {
+            if(grantResults.length > 0) {
+                boolean cameraAccepted = grantResults[0] == PackageManager.PERMISSION_GRANTED;
+
+                if (cameraAccepted) {
+                    captureFromCamera();
+                } else {
+                    requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, CAMERA_REQUEST_CODE);
+                }
+            }
+        }
     }
 
     //when user selects image from gallery this method will be triggered
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable @org.jetbrains.annotations.Nullable Intent data) {
         //need to check if the result code is ok and request code we sent is the same as we defined earlier
-        if ( resultCode== RESULT_OK && requestCode == IMAGE_PICK_GALLERY_CODE) {
+        if (resultCode == RESULT_OK && requestCode == IMAGE_PICK_GALLERY_CODE) {
             if (data != null) {
                 //the selected image is wrapped in data variable
                 selectedImage = data.getData();
                 predictLandMark(selectedImage);
-
             }
-
+        }
+        else if (resultCode == RESULT_OK && requestCode == CAMERA_CAPTURE_CODE) {
+            //the selected image is wrapped in data variable
+            Bitmap captureImage = (Bitmap) data.getExtras().get("data");
+            Glide.with(this)
+                    .load(captureImage) //the uri of the image
+                    .transform(new CenterCrop()) //to fit properly in our image view size
+                    .transition(DrawableTransitionOptions.withCrossFade()) //with a nice transition for user experience
+                    .into(diaryImage); //the image view that needs to be place in
+            diaryImage.setVisibility(View.VISIBLE);
+            //diaryImage.setImageBitmap(captureImage);
+            //diaryImage.setVisibility(View.VISIBLE);
         }
         super.onActivityResult(requestCode, resultCode, data);
     }

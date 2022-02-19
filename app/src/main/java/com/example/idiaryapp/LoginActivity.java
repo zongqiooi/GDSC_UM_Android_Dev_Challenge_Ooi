@@ -27,8 +27,6 @@ public class LoginActivity extends AppCompatActivity {
     private GoogleSignInClient mGoogleSignInClient;
     private FirebaseAuth mAuth;
 
-
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -58,8 +56,6 @@ public class LoginActivity extends AppCompatActivity {
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(intent);
         }
-
-
     }
     private void signIn() {
         Intent signInIntent = mGoogleSignInClient.getSignInIntent();
@@ -82,8 +78,7 @@ public class LoginActivity extends AppCompatActivity {
                 //if any failuer happens during google authentication this toast message will be shown to user
                 Toast.makeText(LoginActivity.this, e.toString(), Toast.LENGTH_SHORT).show();
             }
-
-        }else {
+        } else {
             //here if any failure happens with sending request and the request code is not the same as what we sent when redirecting user in signIn() method
             Toast.makeText(LoginActivity.this, "authentication failed, try again later"+requestCode, Toast.LENGTH_SHORT).show();
         }
@@ -91,7 +86,6 @@ public class LoginActivity extends AppCompatActivity {
     private void firebaseAuthWithGoogle(String tokenID) {
         AuthCredential credential = GoogleAuthProvider.getCredential(tokenID, null);
         mAuth.signInWithCredential(credential).addOnCompleteListener(this, task -> {
-
             if (task.isSuccessful()){
                 // the user is authenticated successfully so we can access the user details such as: user id.
                 FirebaseUser user = mAuth.getCurrentUser();
